@@ -1,0 +1,30 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: mq-trigger-template
+  namespace: mq
+spec:
+  params:
+    - default: default
+      description: The commit id
+      name: commitid
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineRun
+      metadata:
+        name: mq-$(params.commitid)
+        namespace: mq
+      spec:
+        pipelineRef:
+          name: mq-create-deploy
+        resources:
+          - name: mq-source
+            resourceRef:
+              name: mq-source
+          - name: script-source
+            resourceRef:
+              name: script-source
+          - name: image
+            resourceRef:
+              name: build-custom-mq-image
+        serviceAccountName: pipeline
