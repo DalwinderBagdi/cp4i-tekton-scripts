@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: create-mq-image
+  namespace: mq
+spec:
+  resources:
+    - name: mq-source
+      type: git
+    - name: image
+      type: image
+  tasks:
+    - name: build-task
+      params:
+        - name: dockerfileLocation
+          value: ./Dockerfile
+      resources:
+        inputs:
+          - name: cp4i-component-source
+            resource: mq-source
+        outputs:
+          - name: image
+            resource: image
+      taskRef:
+        kind: Task
+        name: create-mq-image

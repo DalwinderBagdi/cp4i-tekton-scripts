@@ -1,0 +1,12 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: mq-source
+  namespace: mq
+spec:
+  params:
+    - name: revision
+      value: master
+    - name: url
+      value: 'https://github.com/DalwinderBagdi/mq-tekton'
+  type: git

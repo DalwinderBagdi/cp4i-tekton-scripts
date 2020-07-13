@@ -1,0 +1,42 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: mq-create-deploy
+  namespace: mq
+spec:
+  resources:
+    - name: mq-source
+      type: git
+    - name: script-source
+      type: git
+    - name: image
+      type: image
+  tasks:
+    - name: create-mq-image
+      resources:
+        inputs:
+          - name: cp4i-component-source
+            resource: mq-source
+        outputs:
+          - name: image
+            resource: image
+      taskRef:
+        kind: Task
+        name: create-mq-image
+    - name: deploy-to-ucd
+      params:
+        - name: component-name
+          value: mq-custom-image
+        - name: application-name
+          value: mq-custom
+      resources:
+        inputs:
+          - name: cp4i-component-source
+            resource: mq-source
+          - name: script-source
+            resource: script-source
+      runAfter:
+        - create-mq-image
+      taskRef:
+        kind: ClusterTask
+        name: deploy-to-ucd

@@ -1,0 +1,12 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: ace-simple-source
+  namespace: ace
+spec:
+  params:
+    - name: revision
+      value: master
+    - name: url
+      value: 'https://github.com/DalwinderBagdi/ace-tekton'
+  type: git

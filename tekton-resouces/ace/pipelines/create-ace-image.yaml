@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: create-ace-image
+  namespace: ace
+spec:
+  params:
+    - default: getHello
+      description: Specify the name of the project being built.
+      name: project
+      type: string
+  resources:
+    - name: source
+      type: git
+    - name: image
+      type: image
+  tasks:
+    - name: build-task
+      params:
+        - name: dockerfileLocation
+          value: ./RBS-simple/$(params.project)/Dockerfile
+      resources:
+        inputs:
+          - name: source
+            resource: source
+        outputs:
+          - name: image
+            resource: image
+      taskRef:
+        kind: Task
+        name: create-ace-image

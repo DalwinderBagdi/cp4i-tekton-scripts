@@ -1,0 +1,12 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: script-source
+  namespace: mq
+spec:
+  params:
+    - name: revision
+      value: master
+    - name: url
+      value: 'https://github.com/DalwinderBagdi/cp4i-tekton-scripts'
+  type: git

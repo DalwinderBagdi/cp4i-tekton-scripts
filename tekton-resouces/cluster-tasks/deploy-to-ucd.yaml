@@ -1,0 +1,119 @@
+apiVersion: tekton.dev/v1alpha1
+kind: ClusterTask
+metadata:
+  generation: 20
+  name: deploy-to-ucd
+spec:
+  params:
+    - default: 'docker.io/node:10-stretch'
+      name: js-image
+      type: string
+    - default: 'quay.io/buildah/stable:v1.11.0'
+      name: BUILDER_IMAGE
+      type: string
+    - default: ./Dockerfile
+      name: DOCKERFILE
+      type: string
+    - default: .
+      name: CONTEXT
+      type: string
+    - default: 'false'
+      name: TLSVERIFY
+      type: string
+    - name: ucd-url
+      type: string
+    - default: '443'
+      name: ucd-port
+      type: string
+    - default: DEV
+      name: environment
+      type: string
+    - default: Deploy from YAML file
+      name: applicationProcess
+      type: string
+    - name: component-name
+      type: string
+    - name: application-name
+      type: string
+  resources:
+    inputs:
+      - name: cp4i-component-source
+        type: git
+      - name: script-source
+        type: git
+  steps:
+    - args:
+        - '-c'
+        - |
+          set -e
+
+          git fetch --unshallow
+
+          echo COMMIT_COUNT=`git rev-list --count HEAD` >> ./env-config
+
+          cp ./env-config /var/lib/containers
+      command:
+        - /bin/sh
+      image: alpine/git
+      name: git
+      resources: {}
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      workingDir: /workspace/cp4i-component-source
+    - resources: {}
+      name: deploy-to-ucd
+      command:
+        - /bin/bash
+      env:
+        - name: UCD_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: ucd-credentials
+              optional: true
+        - name: UCD_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: ucd-credentials
+              optional: true
+        - name: UCD_URL
+          value: $(inputs.params.ucd-url)
+        - name: UCD_PORT
+          value: $(inputs.params.ucd-port)
+        - name: COMPONENT_NAME
+          value: $(inputs.params.component-name)
+        - name: APPLICATION_NAME
+          value: $(inputs.params.application-name)
+        - name: APPLICATION_PROCESS
+          value: deploy
+        - name: ENV
+          value: dev
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      image: ellerbrock/alpine-bash-curl-ssl
+      workingDir: /workspace/script-source
+      args:
+        - '-c'
+        - |
+          set -e
+
+          . /var/lib/containers/env-config
+
+          echo "COMMIT_COUNT: ${COMMIT_COUNT}"
+
+          export SNAPSHOT_ID=$COMMIT_COUNT
+          #imagetag
+          export COMPONENT_VERSION=$COMMIT_COUNT
+
+          sh ./utils/deploy-via-UCD.sh
+  volumes:
+    - emptyDir: {}
+      name: varlibcontainers

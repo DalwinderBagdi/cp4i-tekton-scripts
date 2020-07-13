@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: build-custom-ace-image
+  namespace: ace
+spec:
+  params:
+    - name: url
+      value: 'image-registry.openshift-image-registry.svc:5000/ace/ace-custom-image'
+  type: image

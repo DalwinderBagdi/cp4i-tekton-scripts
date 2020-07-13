@@ -1,0 +1,50 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: generate-bar
+  namespace: ace
+spec:
+  params:
+    - default: ace
+      description: Specify the name of the project being built.
+      name: project
+      type: string
+  resources:
+    inputs:
+      - name: cp4i-component-source
+        type: git
+  steps:
+    - args:
+        - '-c'
+        - |
+          set -eu;
+          echo Project : $PROJECT;
+
+          echo "Running compile.sh";
+
+          sh ./utils/compile-ace-simple-flow.sh
+
+          echo "Running artifactory.sh";
+
+          sh ./utils/artifactory.sh
+
+          #sh ./utils/checkin.sh
+      command:
+        - /bin/sh
+      env:
+        - name: PROJECT
+          value: $(inputs.params.project)
+        - name: ARTIFACTORY_USER
+          valueFrom:
+            secretKeyRef:
+              key: ARTIFACTORY_USER
+              name: artifactory-credentials
+        - name: ARTIFACTORY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: ARTIFACTORY_PASSWORD
+              name: artifactory-credentials
+      image: docker.io/rsundara/ace-build
+      name: compile
+      resources: {}
+      workingDir: /workspace/cp4i-component-source

@@ -1,0 +1,124 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: create-mq-image
+  namespace: mq
+spec:
+  params:
+    - default: 'quay.io/buildah/stable:v1.11.0'
+      description: The location of the buildah builder image.
+      name: BUILDER_IMAGE
+      type: string
+    - default: .
+      description: Path to the directory to use as context.
+      name: CONTEXT
+      type: string
+    - default: 'false'
+      description: >-
+        Verify the TLS on the registry endpoint (for push/pull to a non-TLS
+        registry)
+      name: TLSVERIFY
+      type: string
+    - default: ./Dockerfile
+      description: Path to the Dockerfile to build.
+      name: dockerfileLocation
+      type: string
+  resources:
+    inputs:
+      - name: cp4i-component-source
+        type: git
+    outputs:
+      - name: image
+        type: image
+  steps:
+    - args:
+        - '-c'
+        - |
+          set -e
+
+          git fetch --unshallow
+
+          echo COMMIT_COUNT=`git rev-list --count HEAD` >> ./env-config
+
+          cp ./env-config /var/lib/containers
+      command:
+        - /bin/sh
+      image: alpine/git
+      name: git
+      resources: {}
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      workingDir: /workspace/cp4i-component-source
+    - resources: {}
+      name: build
+      command:
+        - /bin/bash
+      env:
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: ibm-entitlement-cred
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: ibm-entitlement-cred
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      image: $(inputs.params.BUILDER_IMAGE)
+      workingDir: /workspace/cp4i-component-source
+      args:
+        - '-c'
+        - >
+          set -e
+
+          . ./env-config
+
+          # Log in the openshift private registry
+
+          if [[ -n "${REGISTRY_USER}" ]] && [[ -n "${REGISTRY_PASSWORD}" ]];
+          then
+            echo "Logging into Registry"
+            buildah login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}" cp.icr.io
+          fi
+
+          buildah bud --tls-verify=$(inputs.params.TLSVERIFY) --layers -f
+          $(inputs.params.dockerfileLocation)  -t
+          $(outputs.resources.image.url):${COMMIT_COUNT}-amd64
+          $(inputs.params.CONTEXT)
+    - args:
+        - '-c'
+        - >
+          set -e
+
+          . ./env-config
+
+          # push the image to the internal registry
+
+          buildah push --tls-verify=$(inputs.params.TLSVERIFY)
+          "$(outputs.resources.image.url):${COMMIT_COUNT}-amd64"
+          "docker://$(outputs.resources.image.url):${COMMIT_COUNT}-amd64"
+      command:
+        - /bin/bash
+      image: $(inputs.params.BUILDER_IMAGE)
+      name: push
+      resources: {}
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      workingDir: /workspace/cp4i-component-source
+  volumes:
+    - emptyDir: {}
+      name: varlibcontainers
