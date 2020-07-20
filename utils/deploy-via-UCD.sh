@@ -4,7 +4,18 @@ printf "\n
 \n 1. Creating component \n
 ----------------------------------------------------------------------------------------------------------------------------------------\n"
 
+printf "\n\n"
+
+printf "{
+  \"component\": \"%s\",
+  \"name\": \"helm-release-name\",
+  \"value\": \"%s\",
+  \"version\": \"%s\"
+}" "${COMPONENT_NAME}" "${HELM_RELEASE_NAME}" "${COMPONENT_VERSION}" | tee ./properties.json
+
+
 curl -k -u "${UCD_USER}":"${UCD_PASSWORD}" "${UCD_URL}:${UCD_PORT}/cli/version/createVersion?component=${COMPONENT_NAME}&name=${COMPONENT_VERSION}" -X POST
+curl -k -u "${UCD_USER}":"${UCD_PASSWORD}" "${UCD_URL}:${UCD_PORT}/cli/version/versionProperties" -X PUT --data @properties.json
 
 printf "\n
 ----------------------------------------------------------------------------------------------------------------------------------------
