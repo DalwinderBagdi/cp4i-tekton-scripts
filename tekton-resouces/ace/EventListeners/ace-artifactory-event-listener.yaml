@@ -1,0 +1,14 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: ace-artifactory-event-listener
+  namespace: ace
+spec:
+  podTemplate: {}
+  serviceAccountName: pipeline
+  triggers:
+    - bindings:
+        - kind: TriggerBinding
+          ref: ace-artifactory-push-binding
+      template:
+        name: ace-artifactory-trigger-template

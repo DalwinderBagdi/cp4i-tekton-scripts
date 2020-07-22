@@ -1,0 +1,11 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: artifactory-push-binding
+  namespace: ace
+spec:
+  params:
+    - name: size
+      value: $(body.data.size)
+    - name: bar_name
+      value: $(body.data.name)

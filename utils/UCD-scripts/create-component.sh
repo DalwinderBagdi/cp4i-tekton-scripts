@@ -33,3 +33,4 @@ printf "{
 curl -k -u "${UCD_USER}":"${UCD_PASSWORD}" "${UCD_URL}:${UCD_PORT}/cli/version/versionProperties" -X PUT --data @helm-release-properties.json
 curl -k -u "${UCD_USER}":"${UCD_PASSWORD}" "${UCD_URL}:${UCD_PORT}/cli/version/versionProperties" -X PUT --data @image-stream-properties.json
 curl -k -u "${UCD_USER}":"${UCD_PASSWORD}" "${UCD_URL}:${UCD_PORT}/cli/version/versionProperties" -X PUT --data @conf-secret-properties.json
+curl -k -u "${UCD_USER}":"${UCD_PASSWORD}" "${UCD_URL}:${UCD_PORT}/cli/version/versionProperties" -X PUT --data @designer-enabled-properties.json

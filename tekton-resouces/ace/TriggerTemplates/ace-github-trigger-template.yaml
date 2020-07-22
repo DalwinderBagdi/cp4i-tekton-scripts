@@ -1,0 +1,39 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: ace-trigger-template
+  namespace: ace
+spec:
+  params:
+    - default: default
+      description: The commit id
+      name: commitid
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineRun
+      metadata:
+        name: ace-$(params.commitid)
+        namespace: ace
+      spec:
+        pipelineRef:
+          name: ace-server-deploy
+        resources:
+          - name: script-source
+            resourceRef:
+              name: script-source
+          - name: image
+            resourceRef:
+              name: build-custom-ace-image
+          - name: ace-source
+            resourceRef:
+              name: ace-simple-source
+        serviceAccountName: pipeline
+        workspaces:
+          - name: pipeline-ws1
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 1Gi

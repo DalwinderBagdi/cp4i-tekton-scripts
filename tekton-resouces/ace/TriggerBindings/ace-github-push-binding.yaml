@@ -1,0 +1,9 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: ace-github-push-binding
+  namespace: ace
+spec:
+  params:
+    - name: commitid
+      value: $(body.head_commit.id)

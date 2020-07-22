@@ -1,0 +1,49 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: ace-artifactory-trigger-template
+  namespace: ace
+spec:
+  params:
+    - default: default
+      description: The size
+      name: size
+    - default: ace-designer
+      description: name of the bar file
+      name: bar_name
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineRun
+      metadata:
+        name: ace-$(params.size)
+        namespace: ace
+      spec:
+        params:
+          - name: bar_name
+            value: $(params.bar_name)
+          - name: env
+            value: dev
+          - name: production
+            value: "false"
+        pipelineRef:
+          name: ace-designer-deploy
+        resources:
+          - name: image
+            resourceRef:
+              name: build-custom-ace-image
+          - name: ace-source
+            resourceRef:
+              name: script-source
+          - name: script-source
+            resourceRef:
+              name: script-source
+        serviceAccountName: pipeline
+        workspaces:
+          - name: pipeline-ws1
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 1Gi

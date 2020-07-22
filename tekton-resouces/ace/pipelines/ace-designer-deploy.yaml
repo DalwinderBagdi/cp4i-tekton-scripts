@@ -1,0 +1,78 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: ace-designer-deploy
+  namespace: ace
+spec:
+  params:
+    - default: ace-designer
+      description: Specify the name of the project being built.
+      name: bar_name
+      type: string
+    - default: dev
+      description: >-
+        Specfiy the current environment. It is used in computing the Helm
+        release name.
+      name: env
+      type: string
+    - default: "false"
+      description: >-
+        Specifies if the deployment is production-like with High Availability
+        enabled. Default [false]
+      name: production
+      type: string
+  resources:
+    - name: image
+      type: image
+    - name: ace-source
+      type: git
+    - name: script-source
+      type: git
+  tasks:
+    - name: create-ace-image
+      params:
+        - name: bar_name
+          value: $(params.bar_name)
+        - name: artifactory_project
+          value: ace-designer
+        - name: dockerfileLocation
+          value: ./ace/Dockerfile
+      resources:
+        inputs:
+          - name: cp4i-component-source
+            resource: script-source
+          - name: script-source
+            resource: script-source
+        outputs:
+          - name: image
+            resource: image
+      taskRef:
+        kind: Task
+        name: create-ace-image
+      workspaces:
+        - name: persistent
+          workspace: pipeline-ws1
+    - name: deploy-to-ucd
+      params:
+        - name: component-name
+          value: ace-custom-image
+        - name: application-name
+          value: ace-custom
+        - name: helm-release-name
+          value: ucd-ace-designer-image
+      resources:
+        inputs:
+          - name: cp4i-component-source
+            resource: ace-source
+          - name: script-source
+            resource: script-source
+      runAfter:
+        - create-ace-image
+      taskRef:
+        kind: ClusterTask
+        name: deploy-to-ucd
+      workspaces:
+        - name: persistent
+          workspace: pipeline-ws1
+  workspaces:
+    - name: pipeline-ws1
