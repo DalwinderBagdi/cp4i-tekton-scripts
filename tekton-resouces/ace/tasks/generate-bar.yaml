@@ -5,9 +5,11 @@ metadata:
   namespace: ace
 spec:
   params:
-    - default: ace
-      description: Specify the name of the project being built.
-      name: project
+    - name: project
+      type: string
+    - name: artifactoryRepo
+      type: string
+    - name: flowDirectory
       type: string
   resources:
     inputs:
@@ -15,20 +17,28 @@ spec:
         type: git
   steps:
     - args:
-        - '-c'
-        - |
+        - "-c"
+        - >
           set -eu;
+
           echo Project : $PROJECT;
 
-          echo "Running compile.sh";
+          /usr/bin/Xvfb :100 & 
 
-          sh ./utils/compile-ace-simple-flow.sh
+          export DISPLAY=:100   
 
-          echo "Running artifactory.sh";
+          mqsicreatebar -data . -b ${PROJECT}.bar -a ${PROJECT} -trace
 
-          sh ./utils/artifactory.sh
+          # Push the bar file to artifactory
 
-          #sh ./utils/checkin.sh
+          curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD} -T ${PROJECT}.bar
+          "${ARTIFACTORY_URL}/artifactory/$(inputs.params.artifactoryRepo)/${PROJECT}.bar"
+
+          # Push the generated msgflow to artifactory
+
+          curl -u ${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD} -T
+          ./${PROJECT}/gen/${PROJECT}.msgflow
+          "${ARTIFACTORY_URL}/artifactory/$(inputs.params.artifactoryRepo)/${PROJECT}.msgflow"
       command:
         - /bin/sh
       env:
@@ -44,7 +54,12 @@ spec:
             secretKeyRef:
               key: ARTIFACTORY_PASSWORD
               name: artifactory-credentials
+        - name: ARTIFACTORY_URL
+          valueFrom:
+            secretKeyRef:
+              key: ARTIFACTORY_URL
+              name: artifactory-credentials
       image: docker.io/rsundara/ace-build
       name: compile
       resources: {}
-      workingDir: /workspace/cp4i-component-source
+      workingDir: /workspace/cp4i-component-source/$(inputs.params.flowDirectory)
