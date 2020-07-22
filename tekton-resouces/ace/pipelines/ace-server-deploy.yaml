@@ -2,24 +2,26 @@ apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: ace-server-deploy
-  namespace: ace
 spec:
   params:
-    - default: getHello
-      description: Specify the name of the project being built.
+    - description: Specify the name of the project being built.
       name: project
       type: string
-    - default: dev
-      description: >-
+    - description: >-
         Specfiy the current environment. It is used in computing the Helm
         release name.
       name: env
       type: string
-    - default: 'false'
-      description: >-
+    - description: >-
         Specifies if the deployment is production-like with High Availability
         enabled. Default [false]
       name: production
+      type: string
+    - description: The name of the artifactory repository.
+      name: artifactoryRepo
+      type: string
+    - description: The directory containing the flow
+      name: flowDirectory
       type: string
   resources:
     - name: image
@@ -33,6 +35,10 @@ spec:
       params:
         - name: project
           value: $(params.project)
+        - name: artifactoryRepo
+          value: $(params.artifactoryRepo)
+        - name: flowDirectory
+          value: $(params.flowDirectory)
       resources:
         inputs:
           - name: cp4i-component-source
@@ -42,14 +48,14 @@ spec:
         name: generate-bar
     - name: create-ace-image
       params:
-        - name: project
-          value: $(params.project)
-        - name: dockerfileLocation
-          value: ./ace-simple-flow/$(params.project)/Dockerfile
+        - name: bar_name
+          value: $(params.project).bar
       resources:
         inputs:
           - name: cp4i-component-source
             resource: ace-source
+          - name: script-source
+            resource: script-source
         outputs:
           - name: image
             resource: image
@@ -58,12 +64,17 @@ spec:
       taskRef:
         kind: Task
         name: create-ace-image
+      workspaces:
+        - name: persistent
+          workspace: pipeline-ws1
     - name: deploy-to-ucd
       params:
         - name: component-name
           value: ace-custom-image
         - name: application-name
           value: ace-custom
+        - name: helm-release-name
+          value: ucd-ace-custom-image
       resources:
         inputs:
           - name: cp4i-component-source
@@ -75,3 +86,8 @@ spec:
       taskRef:
         kind: ClusterTask
         name: deploy-to-ucd
+      workspaces:
+        - name: persistent
+          workspace: pipeline-ws1
+  workspaces:
+    - name: pipeline-ws1
