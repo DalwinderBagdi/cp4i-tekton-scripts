@@ -1,14 +1,49 @@
 apiVersion: triggers.tekton.dev/v1alpha1
-kind: EventListener
+kind: TriggerTemplate
 metadata:
-  name: ace-event-listener
-  namespace: ace
+  name: ace-trigger-template
 spec:
-  podTemplate: {}
-  serviceAccountName: pipeline
-  triggers:
-    - bindings:
-        - kind: TriggerBinding
-          ref: ace-github-push-binding
-      template:
-        name: ace-github-trigger-template
+  params:
+    - default: default
+      description: The commit id
+      name: commitid
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineRun
+      metadata:
+        name: ace-$(params.commitid)
+        namespace: ace
+      spec:
+        params:
+          - name: project
+            value: getHello
+          - name: env
+            value: dev
+          - name: production
+            value: "false"
+          - name: artifactoryRepo
+            value: test
+          - name: flowDirectory
+            value: ace-simple-flow
+        pipelineRef:
+          name: ace-server-deploy
+        resources:
+          - name: script-source
+            resourceRef:
+              name: script-source
+          - name: image
+            resourceRef:
+              name: build-custom-ace-image
+          - name: ace-source
+            resourceRef:
+              name: ace-simple-source
+        serviceAccountName: pipeline
+        workspaces:
+          - name: pipeline-ws1
+            volumeClaimTemplate:
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 1Gi
