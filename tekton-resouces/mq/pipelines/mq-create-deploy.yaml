@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: mq-create-deploy
-  namespace: mq
 spec:
   resources:
     - name: mq-source
@@ -23,12 +22,17 @@ spec:
       taskRef:
         kind: Task
         name: create-mq-image
+      workspaces:
+        - name: persistent
+          workspace: pipeline-ws1
     - name: deploy-to-ucd
       params:
         - name: component-name
           value: mq-custom-image
         - name: application-name
           value: mq-custom
+        - name: helm-release-name
+          value: ucd-mq-custom-image
       resources:
         inputs:
           - name: cp4i-component-source
@@ -40,3 +44,8 @@ spec:
       taskRef:
         kind: ClusterTask
         name: deploy-to-ucd
+      workspaces:
+        - name: persistent
+          workspace: pipeline-ws1
+  workspaces:
+    - name: pipeline-ws1
