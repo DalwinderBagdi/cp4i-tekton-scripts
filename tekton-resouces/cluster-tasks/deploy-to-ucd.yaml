@@ -1,14 +1,13 @@
 apiVersion: tekton.dev/v1alpha1
 kind: ClusterTask
 metadata:
-  generation: 20
   name: deploy-to-ucd
 spec:
   params:
-    - default: 'docker.io/node:10-stretch'
+    - default: "docker.io/node:10-stretch"
       name: js-image
       type: string
-    - default: 'quay.io/buildah/stable:v1.11.0'
+    - default: "quay.io/buildah/stable:v1.11.0"
       name: BUILDER_IMAGE
       type: string
     - default: ./Dockerfile
@@ -17,12 +16,12 @@ spec:
     - default: .
       name: CONTEXT
       type: string
-    - default: 'false'
+    - default: "false"
       name: TLSVERIFY
       type: string
     - name: ucd-url
       type: string
-    - default: '443'
+    - default: "443"
       name: ucd-port
       type: string
     - default: DEV
@@ -35,6 +34,8 @@ spec:
       type: string
     - name: application-name
       type: string
+    - name: helm-release-name
+      type: string
   resources:
     inputs:
       - name: cp4i-component-source
@@ -42,28 +43,6 @@ spec:
       - name: script-source
         type: git
   steps:
-    - args:
-        - '-c'
-        - |
-          set -e
-
-          git fetch --unshallow
-
-          echo COMMIT_COUNT=`git rev-list --count HEAD` >> ./env-config
-
-          cp ./env-config /var/lib/containers
-      command:
-        - /bin/sh
-      image: alpine/git
-      name: git
-      resources: {}
-      securityContext:
-        privileged: true
-        runAsUser: 0
-      volumeMounts:
-        - mountPath: /var/lib/containers
-          name: varlibcontainers
-      workingDir: /workspace/cp4i-component-source
     - resources: {}
       name: deploy-to-ucd
       command:
@@ -93,6 +72,8 @@ spec:
           value: deploy
         - name: ENV
           value: dev
+        - name: HELM_RELEASE_NAME
+          value: $(inputs.params.helm-release-name)
       securityContext:
         privileged: true
       volumeMounts:
@@ -101,19 +82,21 @@ spec:
       image: ellerbrock/alpine-bash-curl-ssl
       workingDir: /workspace/script-source
       args:
-        - '-c'
+        - "-c"
         - |
           set -e
 
-          . /var/lib/containers/env-config
+          . /workspace/persistent/env-config
 
-          echo "COMMIT_COUNT: ${COMMIT_COUNT}"
+          echo "TIME_STAMP: ${TIME_STAMP}"
 
-          export SNAPSHOT_ID=$COMMIT_COUNT
+          export SNAPSHOT_ID=$TIME_STAMP
           #imagetag
-          export COMPONENT_VERSION=$COMMIT_COUNT
+          export COMPONENT_VERSION=$TIME_STAMP
 
           sh ./utils/deploy-via-UCD.sh
   volumes:
     - emptyDir: {}
       name: varlibcontainers
+  workspaces:
+    - name: persistent
