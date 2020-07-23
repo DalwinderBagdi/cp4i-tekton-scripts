@@ -5,15 +5,15 @@ metadata:
   namespace: mq
 spec:
   params:
-    - default: 'quay.io/buildah/stable:v1.11.0'
+    - default: "quay.io/buildah/stable:v1.11.0"
       description: The location of the buildah builder image.
-      name: BUILDER_IMAGE
+      name: builderImage
       type: string
     - default: .
       description: Path to the directory to use as context.
       name: CONTEXT
       type: string
-    - default: 'false'
+    - default: "false"
       description: >-
         Verify the TLS on the registry endpoint (for push/pull to a non-TLS
         registry)
@@ -32,15 +32,16 @@ spec:
         type: image
   steps:
     - args:
-        - '-c'
+        - "-c"
         - |
           set -e
 
           git fetch --unshallow
 
-          echo COMMIT_COUNT=`git rev-list --count HEAD` >> ./env-config
+          echo TIME_STAMP=`date +%s` >> ./env-config
 
           cp ./env-config /var/lib/containers
+          cp ./env-config /workspace/persistent
       command:
         - /bin/sh
       image: alpine/git
@@ -53,31 +54,8 @@ spec:
         - mountPath: /var/lib/containers
           name: varlibcontainers
       workingDir: /workspace/cp4i-component-source
-    - resources: {}
-      name: build
-      command:
-        - /bin/bash
-      env:
-        - name: REGISTRY_USER
-          valueFrom:
-            secretKeyRef:
-              key: username
-              name: ibm-entitlement-cred
-        - name: REGISTRY_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              key: password
-              name: ibm-entitlement-cred
-      securityContext:
-        privileged: true
-        runAsUser: 0
-      volumeMounts:
-        - mountPath: /var/lib/containers
-          name: varlibcontainers
-      image: $(inputs.params.BUILDER_IMAGE)
-      workingDir: /workspace/cp4i-component-source
-      args:
-        - '-c'
+    - args:
+        - "-c"
         - >
           set -e
 
@@ -93,10 +71,33 @@ spec:
 
           buildah bud --tls-verify=$(inputs.params.TLSVERIFY) --layers -f
           $(inputs.params.dockerfileLocation)  -t
-          $(outputs.resources.image.url):${COMMIT_COUNT}-amd64
+          $(outputs.resources.image.url):${TIME_STAMP}-amd64
           $(inputs.params.CONTEXT)
+      command:
+        - /bin/bash
+      env:
+        - name: REGISTRY_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: ibm-entitlement-cred
+        - name: REGISTRY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: ibm-entitlement-cred
+      image: $(inputs.params.builderImage)
+      name: build
+      resources: {}
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      volumeMounts:
+        - mountPath: /var/lib/containers
+          name: varlibcontainers
+      workingDir: /workspace/cp4i-component-source
     - args:
-        - '-c'
+        - "-c"
         - >
           set -e
 
@@ -105,11 +106,11 @@ spec:
           # push the image to the internal registry
 
           buildah push --tls-verify=$(inputs.params.TLSVERIFY)
-          "$(outputs.resources.image.url):${COMMIT_COUNT}-amd64"
-          "docker://$(outputs.resources.image.url):${COMMIT_COUNT}-amd64"
+          "$(outputs.resources.image.url):${TIME_STAMP}-amd64"
+          "docker://$(outputs.resources.image.url):${TIME_STAMP}-amd64"
       command:
         - /bin/bash
-      image: $(inputs.params.BUILDER_IMAGE)
+      image: $(inputs.params.builderImage)
       name: push
       resources: {}
       securityContext:
@@ -122,3 +123,5 @@ spec:
   volumes:
     - emptyDir: {}
       name: varlibcontainers
+  workspaces:
+    - name: persistent
